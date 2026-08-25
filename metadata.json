@@ -1,0 +1,6 @@
+{
+  "name": "BoardCraft",
+  "description": "A minimal and intuitive board game creator with customizable grid layouts, piece forge, dice mechanics, rule engine, and card artifacts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
