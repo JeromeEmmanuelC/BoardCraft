@@ -251,4 +251,3 @@ export const LayoutStep: React.FC<LayoutStepProps> = ({
   );
 };
 
-

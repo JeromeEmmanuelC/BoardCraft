@@ -32,14 +32,18 @@ export interface Tile {
   isCorner?: boolean;
 }
 
+export type ConnectorType = 'ladder' | 'tunnel' | 'snake';
+
 export interface SnakeOrLadder {
   id: string;
   fromIndex: number;
   toIndex: number;
-  type: 'snake' | 'ladder';
+  type: ConnectorType;
   color?: string;
   label?: string;
 }
+
+export type TileConnector = SnakeOrLadder;
 
 export interface Piece {
   id: string;
@@ -154,7 +158,7 @@ export interface GameProject {
   isFavorite?: boolean;
 }
 
-export type StudioStep = 'layout' | 'aesthetics' | 'color' | 'pieces' | 'dice' | 'rules' | 'artifacts';
+export type StudioStep = 'layout' | 'path' | 'aesthetics' | 'pieces' | 'dice' | 'rules' | 'artifacts';
 
 export interface UserProfile {
   id: string;
@@ -163,4 +167,44 @@ export interface UserProfile {
   avatarIcon: string;
   guildRank: string;
   joinedDate: string;
+  email?: string;
+}
+
+export interface RoomPlayer {
+  id: string;
+  name: string;
+  playerNumber: 1 | 2;
+  color: string;
+  icon: string;
+  currentTileIndex: number;
+  gold: number;
+  inventoryCards: ArtifactCard[];
+  isHost: boolean;
+  isConnected: boolean;
+}
+
+export interface GameLogEntry {
+  id: string;
+  timestamp: string;
+  text: string;
+  playerNumber?: 1 | 2;
+  type?: 'move' | 'event' | 'chat' | 'system' | 'victory';
+}
+
+export interface GameRoom {
+  id: string;
+  board: GameProject;
+  hostId: string;
+  createdAt: string;
+  status: 'waiting' | 'in_progress' | 'completed';
+  players: RoomPlayer[];
+  currentTurnPlayerNumber: 1 | 2;
+  lastRoll: number | null;
+  lastActionSummary: string | null;
+  winner: {
+    playerNumber: 1 | 2;
+    name: string;
+    reason: string;
+  } | null;
+  history: GameLogEntry[];
 }

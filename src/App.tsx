@@ -17,6 +17,9 @@ import { AuthModal } from './components/AuthModal';
 import { CreateBoardModal } from './components/Dashboard/CreateBoardModal';
 import { PlaytestModal } from './components/Playtest/PlaytestModal';
 import { ExportModal } from './components/Studio/ExportModal';
+import { TwoPlayerGameModal } from './components/Multiplayer/TwoPlayerGameModal';
+import { AIGameCrafterModal } from './components/Studio/AIGameCrafterModal';
+import { api } from './lib/api';
 
 const STORAGE_KEY_PROJECTS = 'boardcraft_artisan_projects_v1';
 const STORAGE_KEY_USER = 'boardcraft_artisan_user_v1';
@@ -25,7 +28,7 @@ export default function App() {
   // Navigation & View State
   const [currentView, setCurrentView] = useState<'landing' | 'dashboard' | 'studio'>('landing');
   
-  // Projects State with LocalStorage Persistence
+  // Projects State
   const [projects, setProjects] = useState<GameProject[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_PROJECTS);
@@ -42,7 +45,7 @@ export default function App() {
   const [activeProjectId, setActiveProjectId] = useState<string>(INITIAL_SAMPLE_PROJECTS[0].id);
 
   // User Profile
-  const [user, setUser] = useState<UserProfile | null>(() => {
+  const [user, setUser] = useState<UserProfile>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_USER);
       if (saved) {
@@ -51,8 +54,9 @@ export default function App() {
     } catch (e) {
       console.warn('Could not load user from localStorage:', e);
     }
+    const guestId = `artisan_${Math.random().toString(36).substring(2, 7)}`;
     return {
-      id: 'artisan_default',
+      id: guestId,
       username: 'Alden the Gamecrafter',
       email: 'alden@boardcraft.guild',
       guildRank: 'Master Artisan',
@@ -68,7 +72,36 @@ export default function App() {
   const [playtestProjectId, setPlaytestProjectId] = useState<string | null>(null);
   const [exportProjectId, setExportProjectId] = useState<string | null>(null);
 
-  // Sync projects to localStorage on change
+  // 2-Player Multiplayer Match State
+  const [isTwoPlayerModalOpen, setIsTwoPlayerModalOpen] = useState<boolean>(false);
+  const [twoPlayerProject, setTwoPlayerProject] = useState<GameProject | null>(null);
+  const [twoPlayerRoomId, setTwoPlayerRoomId] = useState<string | null>(null);
+
+  // AI Game Crafter Modal State
+  const [isAICrafterOpen, setIsAICrafterOpen] = useState<boolean>(false);
+
+  // Backend Initialization: Sync with server and check URL invitation parameters
+  useEffect(() => {
+    // 1. Check if URL contains game invite: ?game=ROOM_ID
+    const searchParams = new URLSearchParams(window.location.search);
+    const gameParam = searchParams.get('game');
+    if (gameParam) {
+      setTwoPlayerRoomId(gameParam);
+      setIsTwoPlayerModalOpen(true);
+    }
+
+    // 2. Fetch authoritative boards from backend
+    api.fetchBoards().then((serverBoards) => {
+      if (serverBoards && serverBoards.length > 0) {
+        setProjects(serverBoards);
+      } else {
+        // Seed default boards on backend
+        INITIAL_SAMPLE_PROJECTS.forEach((p) => api.saveBoard(p));
+      }
+    }).catch((e) => console.warn('Could not sync with backend boards:', e));
+  }, []);
+
+  // Sync projects to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
@@ -77,13 +110,11 @@ export default function App() {
     }
   }, [projects]);
 
-  // Sync user to localStorage
+  // Sync user to localStorage & server
   useEffect(() => {
     try {
       if (user) {
         localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
-      } else {
-        localStorage.removeItem(STORAGE_KEY_USER);
       }
     } catch (e) {
       console.warn('Could not persist user:', e);
@@ -105,6 +136,7 @@ export default function App() {
     setProjects((prev) =>
       prev.map((p) => (p.id === updatedProject.id ? updatedProject : p))
     );
+    api.saveBoard(updatedProject);
   };
 
   const handleCreateSquareBoard = (size: number) => {
@@ -118,6 +150,7 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
     setProjects((prev) => [newProject, ...prev]);
+    api.saveBoard(newProject);
     setActiveProjectId(newProject.id);
     setCurrentView('studio');
   };
@@ -133,6 +166,7 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
     setProjects((prev) => [newProject, ...prev]);
+    api.saveBoard(newProject);
     setActiveProjectId(newProject.id);
     setCurrentView('studio');
   };
@@ -153,6 +187,7 @@ export default function App() {
     };
 
     setProjects((prev) => [newProject, ...prev]);
+    api.saveBoard(newProject);
     setActiveProjectId(newProject.id);
     setCurrentView('studio');
   };
@@ -168,6 +203,7 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
     setProjects((prev) => [duplicated, ...prev]);
+    api.saveBoard(duplicated);
   };
 
   const handleDeleteProject = (projectId: string) => {
@@ -178,25 +214,49 @@ export default function App() {
     if (confirm('Are you sure you wish to dissolve this board project from your workshop archive?')) {
       const remaining = projects.filter((p) => p.id !== projectId);
       setProjects(remaining);
+      api.deleteBoard(projectId);
       if (activeProjectId === projectId) {
         setActiveProjectId(remaining[0].id);
       }
     }
   };
 
+  const handleLaunch2Player = (target: GameProject | string) => {
+    const proj = typeof target === 'string' ? projects.find((p) => p.id === target) : target;
+    if (proj) {
+      setTwoPlayerProject(proj);
+      setTwoPlayerRoomId(null);
+      setIsTwoPlayerModalOpen(true);
+    }
+  };
+
+  const handleAIGameCreated = (createdProject: GameProject) => {
+    setProjects((prev) => [createdProject, ...prev]);
+    setActiveProjectId(createdProject.id);
+    setCurrentView('studio');
+  };
+
   const handleAuthSuccess = (authenticatedUser: UserProfile) => {
     setUser(authenticatedUser);
     setIsAuthModalOpen(false);
     setCurrentView('dashboard');
+    api.login(authenticatedUser.username, authenticatedUser.email).catch((e) => console.warn(e));
   };
 
   const handleLogout = () => {
-    setUser(null);
+    const guestId = `artisan_${Math.random().toString(36).substring(2, 7)}`;
+    setUser({
+      id: guestId,
+      username: 'Guest Traveler',
+      guildRank: 'Apprentice',
+      avatarIcon: '🎲',
+      title: 'Visiting Player',
+    });
     setCurrentView('landing');
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 flex flex-col selection:bg-zinc-900 selection:text-white">
+    <div className="min-h-screen bg-[#faf8f5] text-stone-900 flex flex-col selection:bg-stone-900 selection:text-amber-100">
       
       {/* Top Navbar */}
       <Navbar
@@ -205,6 +265,7 @@ export default function App() {
         onOpenDemo={() => setIsDemoModalOpen(true)}
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onNewGame={() => setIsCreateBoardModalOpen(true)}
+        onOpenAICrafter={() => setIsAICrafterOpen(true)}
         user={user}
         onLogout={handleLogout}
         activeProjectName={activeProject?.name}
@@ -228,6 +289,8 @@ export default function App() {
             user={user}
             onOpenProject={handleOpenProjectInStudio}
             onPlaytestProject={(id) => setPlaytestProjectId(id)}
+            onPlay2Player={handleLaunch2Player}
+            onOpenAICrafter={() => setIsAICrafterOpen(true)}
             onNewBoardClick={() => setIsCreateBoardModalOpen(true)}
             onDuplicateProject={handleDuplicateProject}
             onDeleteProject={handleDeleteProject}
@@ -241,10 +304,37 @@ export default function App() {
             key={activeProject.id}
             initialProject={activeProject}
             onSaveProject={handleSaveProject}
+            onPlay2Player={handleLaunch2Player}
             onBackToDashboard={() => setCurrentView('dashboard')}
           />
         )}
       </div>
+
+      {/* 2-Player Multiplayer Live Parlor Modal */}
+      {isTwoPlayerModalOpen && (
+        <TwoPlayerGameModal
+          isOpen={isTwoPlayerModalOpen}
+          onClose={() => {
+            setIsTwoPlayerModalOpen(false);
+            setTwoPlayerRoomId(null);
+            // Clean URL search query without reload
+            if (window.location.search.includes('game=')) {
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          }}
+          project={twoPlayerProject || activeProject}
+          initialRoomId={twoPlayerRoomId || undefined}
+          currentPlayerName={user.username}
+          currentPlayerId={user.id}
+        />
+      )}
+
+      {/* AI Ludology & Rule Crafter Modal */}
+      <AIGameCrafterModal
+        isOpen={isAICrafterOpen}
+        onClose={() => setIsAICrafterOpen(false)}
+        onGameCreated={handleAIGameCreated}
+      />
 
       {/* Demo Video Modal */}
       <DemoVideoModal
@@ -273,7 +363,7 @@ export default function App() {
         onSelectBuiltinTemplate={handleSelectBuiltinTemplate}
       />
 
-      {/* Quick Playtest Modal from Dashboard */}
+      {/* Quick Solo Playtest Modal from Dashboard */}
       {playtestProject && (
         <PlaytestModal
           isOpen={!!playtestProjectId}
@@ -294,3 +384,4 @@ export default function App() {
     </div>
   );
 }
+

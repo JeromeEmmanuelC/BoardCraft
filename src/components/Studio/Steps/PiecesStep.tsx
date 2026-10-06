@@ -289,4 +289,3 @@ export const PiecesStep: React.FC<PiecesStepProps> = ({
   );
 };
 
-

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { GameProject, PalettePreset, Tile, TileActionType, SnakeOrLadder } from '../../../types';
+import { GameProject, PalettePreset, Tile, TileActionType } from '../../../types';
 import { PALETTE_PRESETS, TILE_ICONS } from '../../../data/templates';
-import { Palette, Paintbrush, Check, Plus, Trash2 } from 'lucide-react';
+import { Palette, Paintbrush, Check } from 'lucide-react';
 
 interface AestheticsStepProps {
   project: GameProject;
@@ -11,17 +11,16 @@ interface AestheticsStepProps {
 }
 
 const ACTION_TYPES: { id: TileActionType; label: string }[] = [
-  { id: 'none', label: 'None (Standard Tile)' },
-  { id: 'gain_gold', label: '💰 Gain Gold / Bounty' },
-  { id: 'lose_gold', label: '💸 Pay Tax / Penalty' },
-  { id: 'draw_card', label: '📜 Draw Artifact Card' },
-  { id: 'advance', label: '⏩ Advance Extra Tiles' },
-  { id: 'retreat', label: '⏪ Retreat Backward' },
-  { id: 'roll_again', label: '🎲 Roll Bonus Turn' },
-  { id: 'lose_turn', label: '⏳ Lose Next Turn' },
-  { id: 'safe_zone', label: '🛡️ Safe Sanctuary' },
-  { id: 'teleport', label: '🌀 Teleport / Shortcut' },
-  { id: 'jail', label: '⛓️ Dungeon / Jail' },
+  { id: 'none', label: 'None (Normal Cell)' },
+  { id: 'gain_gold', label: '💰 Bonus Points / Gold' },
+  { id: 'lose_gold', label: '💸 Penalty / Tax' },
+  { id: 'draw_card', label: '📜 Draw Card' },
+  { id: 'advance', label: '⏩ Advance Extra Steps' },
+  { id: 'retreat', label: '⏪ Go Backward' },
+  { id: 'roll_again', label: '🎲 Roll Again' },
+  { id: 'lose_turn', label: '⏳ Skip Next Turn' },
+  { id: 'safe_zone', label: '🛡️ Safe Zone' },
+  { id: 'jail', label: '⛓️ Jail / Rest Stop' },
 ];
 
 const PRESET_SWATCHES = [
@@ -36,7 +35,7 @@ export const AestheticsStep: React.FC<AestheticsStepProps> = ({
   selectedTileIndex,
   onSelectTile,
 }) => {
-  const { paletteId, tiles, snakesAndLadders = [] } = project;
+  const { paletteId, tiles } = project;
   const [paintMode, setPaintMode] = useState<'preset' | 'individual'>('preset');
 
   const selectedTile = tiles.find((t) => t.index === selectedTileIndex) || tiles[0];
@@ -80,66 +79,6 @@ export const AestheticsStep: React.FC<AestheticsStepProps> = ({
       };
     });
     onChangeProject({ ...project, tiles: updatedTiles });
-  };
-
-  // Add Snake or Ladder connection
-  const handleAddSnakeLadder = (type: 'snake' | 'ladder') => {
-    const newFrom = selectedTile ? selectedTile.index : 10;
-    const newTo = type === 'ladder' ? Math.min(newFrom + 15, tiles.length) : Math.max(newFrom - 15, 1);
-    
-    const newLink: SnakeOrLadder = {
-      id: `sl_${Date.now()}`,
-      fromIndex: newFrom,
-      toIndex: newTo,
-      type,
-      label: type === 'ladder' ? 'Ladder Shortcut' : 'Snake Slide',
-    };
-
-    // Update tile trigger as well
-    const updatedTiles = tiles.map((t) => {
-      if (t.index === newFrom) {
-        return {
-          ...t,
-          icon: type === 'ladder' ? '🪜' : '🐍',
-          subLabel: type === 'ladder' ? `+to ${newTo}` : `-to ${newTo}`,
-          actionType: 'teleport' as TileActionType,
-          actionValue: newTo,
-        };
-      }
-      return t;
-    });
-
-    onChangeProject({
-      ...project,
-      snakesAndLadders: [...snakesAndLadders, newLink],
-      tiles: updatedTiles,
-    });
-  };
-
-  const handleRemoveSnakeLadder = (id: string) => {
-    const link = snakesAndLadders.find((s) => s.id === id);
-    const updatedLinks = snakesAndLadders.filter((s) => s.id !== id);
-    
-    let updatedTiles = tiles;
-    if (link) {
-      updatedTiles = tiles.map((t) => {
-        if (t.index === link.fromIndex) {
-          return {
-            ...t,
-            icon: undefined,
-            subLabel: undefined,
-            actionType: 'none',
-          };
-        }
-        return t;
-      });
-    }
-
-    onChangeProject({
-      ...project,
-      snakesAndLadders: updatedLinks,
-      tiles: updatedTiles,
-    });
   };
 
   return (
@@ -378,62 +317,7 @@ export const AestheticsStep: React.FC<AestheticsStepProps> = ({
         </div>
       )}
 
-      {/* Snake and Ladder Links Section */}
-      <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-zinc-900">
-            Tile Connectors & Shortcuts ({snakesAndLadders.length})
-          </span>
-          <div className="flex gap-2">
-            <button
-              onClick={() => handleAddSnakeLadder('ladder')}
-              className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1 hover:bg-emerald-100 transition-colors"
-            >
-              <Plus className="w-3 h-3" />
-              <span>Ladder (Up)</span>
-            </button>
-            <button
-              onClick={() => handleAddSnakeLadder('snake')}
-              className="px-2.5 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-1 hover:bg-red-100 transition-colors"
-            >
-              <Plus className="w-3 h-3" />
-              <span>Snake (Down)</span>
-            </button>
-          </div>
-        </div>
-
-        {snakesAndLadders.length === 0 ? (
-          <p className="text-xs text-zinc-500">
-            No special shortcuts configured. Click above to add climbing ladders or snakes between tiles.
-          </p>
-        ) : (
-          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-            {snakesAndLadders.map((link) => (
-              <div
-                key={link.id}
-                className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs"
-              >
-                <div className="flex items-center gap-2 font-medium">
-                  <span>{link.type === 'ladder' ? '🪜' : '🐍'}</span>
-                  <span className={link.type === 'ladder' ? 'text-emerald-700' : 'text-red-700'}>
-                    {link.type.toUpperCase()}: Tile #{link.fromIndex} ➔ Tile #{link.toIndex}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleRemoveSnakeLadder(link.id)}
-                  className="text-zinc-400 hover:text-red-600 p-1 transition-colors"
-                  title="Remove connector"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
     </div>
   );
 };
-
 

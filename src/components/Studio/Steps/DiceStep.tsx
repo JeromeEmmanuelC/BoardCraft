@@ -128,54 +128,23 @@ export const DiceStep: React.FC<DiceStepProps> = ({
         </div>
       </div>
 
-      {/* Rules & Modifiers */}
-      <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 space-y-4">
-        <h4 className="text-xs font-bold text-zinc-900">
-          Movement Rules & Modifiers
+      {/* Simple Max Value Rule */}
+      <div className="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-3">
+        <h4 className="text-xs font-bold text-stone-900">
+          Max Roll Rule
         </h4>
 
-        <div className="space-y-3">
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={diceConfig.allowReRollOnMax}
-              onChange={(e) => handleUpdateConfig({ allowReRollOnMax: e.target.checked })}
-              className="w-4 h-4 accent-zinc-900 rounded"
-            />
-            <span className="text-xs text-zinc-700 font-medium">
-              Bonus Roll on Max Value (Rolling the highest number gives an extra roll)
-            </span>
-          </label>
-
-          {diceConfig.type === '2d6' && (
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={diceConfig.doublesRule || false}
-                onChange={(e) => handleUpdateConfig({ doublesRule: e.target.checked })}
-                className="w-4 h-4 accent-zinc-900 rounded"
-              />
-              <span className="text-xs text-zinc-700 font-medium">
-                Doubles Rule (Rolling identical numbers grants an extra turn)
-              </span>
-            </label>
-          )}
-
-          <div>
-            <div className="flex justify-between text-xs text-zinc-700 font-medium mb-1">
-              <span>Flat Movement Modifier:</span>
-              <span className="font-bold">{diceConfig.modifier >= 0 ? `+${diceConfig.modifier}` : diceConfig.modifier}</span>
-            </div>
-            <input
-              type="range"
-              min="-2"
-              max="5"
-              value={diceConfig.modifier}
-              onChange={(e) => handleUpdateConfig({ modifier: Number(e.target.value) })}
-              className="w-full accent-zinc-900 cursor-pointer"
-            />
-          </div>
-        </div>
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={diceConfig.allowReRollOnMax}
+            onChange={(e) => handleUpdateConfig({ allowReRollOnMax: e.target.checked })}
+            className="w-4 h-4 accent-stone-900 rounded"
+          />
+          <span className="text-xs text-stone-800 font-medium">
+            Bonus turn on max value (rolling the highest number, like a 6 on a D6, lets the player roll again)
+          </span>
+        </label>
       </div>
 
       {/* Interactive Live Dice Roll Test Pad */}
@@ -212,5 +181,4 @@ export const DiceStep: React.FC<DiceStepProps> = ({
     </div>
   );
 };
-
 

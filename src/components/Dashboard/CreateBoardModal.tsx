@@ -322,4 +322,3 @@ export const CreateBoardModal: React.FC<CreateBoardModalProps> = ({
   );
 };
 
-

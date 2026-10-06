@@ -261,4 +261,3 @@ export const RulesStep: React.FC<RulesStepProps> = ({
   );
 };
 
-
